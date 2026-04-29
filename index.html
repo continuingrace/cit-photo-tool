@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CiT 사진 배경 통일 도구</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #F4F5F7; color: #1a1a1a; min-height: 100vh; padding: 2rem 1rem; }
+  .container { max-width: 680px; margin: 0 auto; }
+  h1 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+  .subtitle { font-size: 13px; color: #666; margin-bottom: 1.5rem; }
+  .card { background: #fff; border: 1px solid #E5E7EB; border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; }
+  .card-title { font-size: 12px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; }
+
+  /* 배경 미리보기 */
+  .bg-preview { height: 36px; border-radius: 8px; border: 1px solid #E5E7EB; background: linear-gradient(to right, #E6E9EE, #E3E6EB, #E0E3E8); margin-bottom: 6px; }
+  .hex-row { display: flex; gap: 6px; }
+  .hex { font-family: monospace; font-size: 11px; background: #F4F5F7; padding: 2px 8px; border-radius: 6px; color: #555; }
+
+  /* 드롭존 */
+  .drop-zone { border: 2px dashed #D1D5DB; border-radius: 10px; padding: 2rem; text-align: center; cursor: pointer; background: #FAFAFA; transition: all 0.15s; }
+  .drop-zone:hover, .drop-zone.over { border-color: #9CA3AF; background: #F3F4F6; }
+  .drop-zone .icon { font-size: 28px; margin-bottom: 8px; }
+  .drop-zone p { font-size: 14px; color: #555; }
+  .drop-zone small { font-size: 12px; color: #9CA3AF; }
+  .thumb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 8px; margin-top: 12px; }
+  .thumb { position: relative; border-radius: 8px; overflow: hidden; border: 1px solid #E5E7EB; }
+  .thumb img { width: 100%; height: 80px; object-fit: cover; display: block; }
+  .thumb .rm { position: absolute; top: 3px; right: 3px; background: rgba(0,0,0,0.5); color: #fff; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 12px; cursor: pointer; line-height: 20px; text-align: center; }
+  .thumb .fn { font-size: 10px; color: #888; padding: 3px 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: #fff; }
+
+  /* 옵션 */
+  .opts { display: flex; gap: 12px; flex-wrap: wrap; }
+  .opt { flex: 1; min-width: 130px; }
+  .opt label { display: block; font-size: 12px; color: #666; margin-bottom: 5px; }
+  select { width: 100%; border: 1px solid #D1D5DB; border-radius: 8px; padding: 7px 10px; font-size: 13px; background: #fff; color: #1a1a1a; height: 36px; }
+  .srow { display: flex; align-items: center; gap: 8px; }
+  .srow input[type=range] { flex: 1; accent-color: #1a1a1a; }
+  .sv { font-size: 13px; font-weight: 600; min-width: 28px; }
+
+  /* 버튼 */
+  .btn-row { display: flex; gap: 10px; margin-top: 1rem; }
+  .btn-pri { background: #1a1a1a; color: #fff; border: none; border-radius: 8px; padding: 10px 22px; font-size: 14px; font-weight: 500; cursor: pointer; flex: 1; }
+  .btn-pri:disabled { opacity: 0.35; cursor: not-allowed; }
+  .btn-sec { background: #fff; border: 1px solid #D1D5DB; border-radius: 8px; padding: 10px 16px; font-size: 14px; cursor: pointer; color: #1a1a1a; }
+  .btn-sec:hover { background: #F4F5F7; }
+
+  /* 진행 */
+  .prog-wrap { height: 4px; background: #E5E7EB; border-radius: 2px; margin-top: 10px; overflow: hidden; display: none; }
+  .prog-bar { height: 100%; background: #1a1a1a; width: 0%; transition: width 0.3s; border-radius: 2px; }
+  .status { font-size: 12px; color: #888; margin-top: 6px; min-height: 16px; }
+
+  /* 결과 */
+  .result-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-top: 12px; }
+  .res-item { border: 1px solid #E5E7EB; border-radius: 10px; overflow: hidden; }
+  .res-item img { width: 100%; height: 130px; object-fit: cover; display: block; }
+  .res-item a { display: block; font-size: 12px; padding: 7px 10px; background: #F9FAFB; color: #1a1a1a; text-decoration: none; text-align: center; border-top: 1px solid #E5E7EB; }
+  .res-item a:hover { background: #F3F4F6; }
+  .res-err { font-size: 11px; padding: 6px 8px; color: #DC2626; text-align: center; background: #FEF2F2; border-top: 1px solid #FECACA; }
+
+  .notice { font-size: 12px; color: #888; background: #F9FAFB; border-radius: 8px; padding: 8px 12px; margin-top: 8px; line-height: 1.6; }
+  .steps { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .step { font-size: 12px; background: #F3F4F6; border-radius: 6px; padding: 4px 10px; color: #555; }
+  .step b { color: #1a1a1a; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>CiT 사진 배경 통일 도구</h1>
+  <p class="subtitle">누끼 제거 → 스튜디오 배경 합성 → 고화질 저장</p>
+
+  <!-- 처리 흐름 -->
+  <div class="steps">
+    <div class="step"><b>①</b> 사진 업로드</div>
+    <div class="step"><b>②</b> 누끼 제거</div>
+    <div class="step"><b>③</b> 배경 합성</div>
+    <div class="step"><b>④</b> 업스케일</div>
+    <div class="step"><b>⑤</b> 다운로드</div>
+  </div>
+
+  <!-- 배경 -->
+  <div class="card">
+    <div class="card-title">합성 배경 (참고 사진과 동일)</div>
+    <div class="bg-preview"></div>
+    <div class="hex-row">
+      <span class="hex">#E6E9EE</span>
+      <span style="font-size:12px;color:#aaa;line-height:22px;">→</span>
+      <span class="hex">#E0E3E8</span>
+      <span style="font-size:12px;color:#aaa;line-height:22px;margin-left:4px;">쿨 블루-그레이 스튜디오</span>
+    </div>
+  </div>
+
+  <!-- 업로드 -->
+  <div class="card">
+    <div class="card-title">사진 업로드</div>
+    <div class="drop-zone" id="dropZone">
+      <div class="icon">🖼</div>
+      <p>클릭하거나 파일을 드래그하세요</p>
+      <small>JPG · PNG · WEBP · 복수 선택 가능</small>
+    </div>
+    <input type="file" id="fileInput" multiple accept="image/*" style="display:none">
+    <div class="thumb-grid" id="thumbGrid"></div>
+  </div>
+
+  <!-- 옵션 -->
+  <div class="card">
+    <div class="card-title">출력 옵션</div>
+    <div class="opts">
+      <div class="opt">
+        <label>배경 스타일</label>
+        <select id="bgStyle">
+          <option value="studio">스튜디오 그라디언트 (참고와 동일)</option>
+          <option value="flat">단색 플랫</option>
+          <option value="radial">방사형 (중앙 밝게)</option>
+        </select>
+      </div>
+      <div class="opt">
+        <label>출력 포맷</label>
+        <select id="outFmt">
+          <option value="jpeg">JPEG (고화질)</option>
+          <option value="png">PNG (무손실)</option>
+        </select>
+      </div>
+    </div>
+    <div class="opts" style="margin-top:12px;">
+      <div class="opt">
+        <label>업스케일 배율</label>
+        <div class="srow">
+          <span style="font-size:11px;color:#aaa;">1×</span>
+          <input type="range" id="scaleSlider" min="1" max="4" step="1" value="2">
+          <span style="font-size:11px;color:#aaa;">4×</span>
+          <span class="sv" id="scaleVal">2×</span>
+        </div>
+      </div>
+      <div class="opt">
+        <label>JPEG 품질</label>
+        <div class="srow">
+          <input type="range" id="qualSlider" min="80" max="100" step="5" value="95">
+          <span class="sv" id="qualVal">95</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn-pri" id="runBtn" disabled>누끼 + 배경 합성 + 고화질 처리 시작</button>
+    <button class="btn-sec" id="clearBtn">초기화</button>
+  </div>
+  <div class="prog-wrap" id="progWrap"><div class="prog-bar" id="progBar"></div></div>
+  <p class="status" id="statusMsg"></p>
+
+  <!-- 결과 -->
+  <div id="resultSection" style="display:none; margin-top:1.5rem;">
+    <div class="card">
+      <div class="card-title">처리 결과</div>
+      <div class="result-grid" id="resultGrid"></div>
+      <div class="btn-row" style="margin-top:1rem;">
+        <button class="btn-pri" id="dlAllBtn">전체 ZIP 다운로드</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const BG_LIGHT = '#E6E9EE', BG_MID = '#E3E6EB', BG_DARK = '#E0E3E8';
+let files = [], results = [];
+
+// 드롭존
+const dz = $('dropZone');
+dz.addEventListener('click', () => $('fileInput').click());
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('over'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('over'); addFiles(e.dataTransfer.files); });
+$('fileInput').addEventListener('change', () => addFiles($('fileInput').files));
+
+$('scaleSlider').addEventListener('input', () => { $('scaleVal').textContent = $('scaleSlider').value + '×'; });
+$('qualSlider').addEventListener('input', () => { $('qualVal').textContent = $('qualSlider').value; });
+
+function addFiles(newFiles) {
+  Array.from(newFiles).forEach(f => {
+    if (!f.type.startsWith('image/')) return;
+    files.push(f);
+    const idx = files.length - 1;
+    const reader = new FileReader();
+    reader.onload = e => {
+      const item = document.createElement('div');
+      item.className = 'thumb';
+      item.innerHTML = `<img src="${e.target.result}"><button class="rm" data-idx="${idx}">×</button><div class="fn">${f.name}</div>`;
+      $('thumbGrid').appendChild(item);
+    };
+    reader.readAsDataURL(f);
+  });
+  $('runBtn').disabled = false;
+}
+
+$('thumbGrid').addEventListener('click', e => {
+  if (e.target.classList.contains('rm')) {
+    files[+e.target.dataset.idx] = null;
+    e.target.closest('.thumb').remove();
+    $('runBtn').disabled = files.filter(Boolean).length === 0;
+  }
+});
+
+$('clearBtn').addEventListener('click', () => {
+  files = []; results = [];
+  $('thumbGrid').innerHTML = ''; $('resultGrid').innerHTML = '';
+  $('resultSection').style.display = 'none';
+  $('progWrap').style.display = 'none';
+  $('statusMsg').textContent = '';
+  $('fileInput').value = '';
+  $('runBtn').disabled = true;
+});
+
+// remove.bg (Netlify function 프록시)
+async function removeBackground(file) {
+  const base64 = await toBase64(file);
+  const res = await fetch('/.netlify/functions/removebg', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ imageBase64: base64.split(',')[1], mimeType: file.type })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `HTTP ${res.status}`);
+  }
+  const data = await res.json();
+  const bin = atob(data.imageBase64);
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return new Blob([arr], { type: 'image/png' });
+}
+
+function toBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+
+// 배경 그리기
+function drawBg(ctx, w, h, style) {
+  if (style === 'flat') {
+    ctx.fillStyle = BG_MID; ctx.fillRect(0, 0, w, h);
+  } else if (style === 'radial') {
+    const rg = ctx.createRadialGradient(w/2, h*0.38, 0, w/2, h*0.38, Math.max(w,h)*0.72);
+    rg.addColorStop(0, BG_LIGHT); rg.addColorStop(0.55, BG_MID); rg.addColorStop(1, BG_DARK);
+    ctx.fillStyle = rg; ctx.fillRect(0, 0, w, h);
+  } else {
+    const lg = ctx.createLinearGradient(0, 0, w*0.5, h);
+    lg.addColorStop(0, BG_LIGHT); lg.addColorStop(0.45, BG_MID); lg.addColorStop(1, BG_DARK);
+    ctx.fillStyle = lg; ctx.fillRect(0, 0, w, h);
+    const vg = ctx.createRadialGradient(w/2, h/2, Math.min(w,h)*0.28, w/2, h/2, Math.max(w,h)*0.72);
+    vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.055)');
+    ctx.fillStyle = vg; ctx.fillRect(0, 0, w, h);
+  }
+}
+
+// 합성 + 업스케일
+async function composite(nukkiBlob, scale, fmt, quality, bgStyle) {
+  return new Promise(resolve => {
+    const img = new Image();
+    const url = URL.createObjectURL(nukkiBlob);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const dw = img.naturalWidth * scale, dh = img.naturalHeight * scale;
+      const canvas = document.createElement('canvas');
+      canvas.width = dw; canvas.height = dh;
+      const ctx = canvas.getContext('2d');
+      drawBg(ctx, dw, dh, bgStyle);
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, 0, 0, dw, dh);
+      const mime = fmt === 'jpeg' ? 'image/jpeg' : 'image/png';
+      canvas.toBlob(resolve, mime, quality);
+    };
+    img.src = url;
+  });
+}
+
+// 메인 실행
+$('runBtn').addEventListener('click', async () => {
+  const valid = files.filter(Boolean);
+  if (!valid.length) return;
+  results = []; $('resultGrid').innerHTML = '';
+  $('resultSection').style.display = 'none';
+  $('progWrap').style.display = 'block';
+  $('runBtn').disabled = true;
+
+  const scale = parseInt($('scaleSlider').value);
+  const quality = parseInt($('qualSlider').value) / 100;
+  const fmt = $('outFmt').value;
+  const bgStyle = $('bgStyle').value;
+
+  for (let i = 0; i < valid.length; i++) {
+    const f = valid[i];
+    $('statusMsg').textContent = `(${i+1}/${valid.length}) 누끼 처리 중: ${f.name}`;
+    $('progBar').style.width = Math.round((i / valid.length) * 100) + '%';
+    try {
+      const nukki = await removeBackground(f);
+      $('statusMsg').textContent = `(${i+1}/${valid.length}) 배경 합성 중: ${f.name}`;
+      const out = await composite(nukki, scale, fmt, quality, bgStyle);
+      const url = URL.createObjectURL(out);
+      const ext = fmt === 'jpeg' ? 'jpg' : 'png';
+      const base = f.name.replace(/\.[^.]+$/, '');
+      results.push({ url, name: `${base}_studio.${ext}`, blob: out, ok: true });
+    } catch(err) {
+      results.push({ url: null, name: f.name, blob: null, ok: false, err: err.message });
+    }
+    $('progBar').style.width = Math.round(((i+1) / valid.length) * 100) + '%';
+  }
+
+  const ok = results.filter(r => r.ok).length;
+  $('statusMsg').textContent = `완료! ${ok}/${valid.length}개 성공`;
+  $('runBtn').disabled = false;
+  renderResults();
+});
+
+function renderResults() {
+  $('resultGrid').innerHTML = '';
+  results.forEach(r => {
+    const item = document.createElement('div');
+    item.className = 'res-item';
+    if (r.ok) {
+      item.innerHTML = `<img src="${r.url}"><a href="${r.url}" download="${r.name}">⬇ ${r.name.length>22?r.name.slice(0,19)+'…':r.name}</a>`;
+    } else {
+      item.innerHTML = `<div style="height:80px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#888;padding:8px;text-align:center;">${r.name}</div><div class="res-err">오류: ${r.err}</div>`;
+    }
+    $('resultGrid').appendChild(item);
+  });
+  $('resultSection').style.display = 'block';
+}
+
+$('dlAllBtn').addEventListener('click', async () => {
+  const valid = results.filter(r => r.ok);
+  if (!valid.length) return;
+  $('dlAllBtn').disabled = true; $('dlAllBtn').textContent = 'ZIP 생성 중...';
+  const zip = new JSZip();
+  valid.forEach(r => zip.file(r.name, r.blob));
+  const zb = await zip.generateAsync({ type: 'blob' });
+  const url = URL.createObjectURL(zb);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'cit_studio_photos.zip';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  $('dlAllBtn').disabled = false; $('dlAllBtn').textContent = '전체 ZIP 다운로드';
+});
+</script>
+</body>
+</html>
